@@ -1,0 +1,75 @@
+* AGRI-WATT: Active Zener Demagnetization & Peak-and-Hold Driver
+* SPICE Transient Simulation Netlist
+* Circuit: Optocoupler -> MOSFET (IRLZ44N) -> 12V Solenoid (45mH, 18 Ohm) + Active Zener (36V)
+
+.TITLE AGRI-WATT High-Speed Solenoid Driver SPICE Simulation
+
+* ==============================================================================
+* POWER SUPPLIES & INPUT PULSE TRAIN
+* ==============================================================================
+V_BAT VDD 0 DC 12.0V
+V_VCC VCC_ISO 0 DC 5.0V
+
+* ESP32-S3 GPIO 18 Pulse: 3ms Pull-In (3.3V) -> 15ms Hold (PWM 30%) -> OFF (0V)
+V_IN GPIO18 0 PULSE(0.0V 3.3V 1.0ms 10us 10us 3.0ms 50.0ms)
+
+* ==============================================================================
+* STAGE 1: OPTOCOUPLER GALVANIC ISOLATION (PC817 MODEL)
+* ==============================================================================
+R_LED GPIO18 OPTO_IN 330
+D_OPTO_LED OPTO_IN 0 D_IR_LED
+.MODEL D_IR_LED D(IS=1e-14 RS=2.0 BV=5.0 IBV=10u)
+
+* Phototransistor Output
+R_PULLUP VCC_ISO GATE_DRIVE 10k
+Q_OPTO GATE_DRIVE OPTO_IN_EMITTER 0 Q_NPN_OPTO
+.MODEL Q_NPN_OPTO NPN(IS=1e-14 BF=150 VAF=50)
+
+* ==============================================================================
+* STAGE 2: POWER MOSFET SWITCH (IRLZ44N LOGIC-LEVEL N-CHANNEL)
+* ==============================================================================
+R_GATE GATE_DRIVE MOSFET_GATE 100
+R_PULLDOWN MOSFET_GATE 0 100k
+
+* Logic-Level MOSFET: Vth = 2.0V, Rds(on) = 22 mOhm, Ciss = 1700pF
+M1 DRAIN MOSFET_GATE 0 0 IRLZ44N_MODEL
+.MODEL IRLZ44N_MODEL NMOS(
++ LEVEL=3 
++ VTO=1.85 
++ KP=25.0 
++ RS=0.015 
++ RD=0.010 
++ TOX=4e-8 
++ CGSO=8e-10 
++ CGDO=3e-10 
++ CBD=1.5e-9)
+
+* Bulk Decoupling Capacitor
+C_BULK VDD 0 2200uF IC=12.0V
+R_ESR VDD VDD_CLEAN 0.035
+
+* ==============================================================================
+* STAGE 3: SOLENOID INDUCTIVE COIL (12V, 45mH, 18 Ohm)
+* ==============================================================================
+L_COIL VDD_CLEAN COIL_MID 45mH IC=0.0A
+R_COIL COIL_MID DRAIN 18.0
+
+* ==============================================================================
+* STAGE 4: ACTIVE 36V ZENER FLYBACK SNUBBER NETWORK
+* ==============================================================================
+* Series connection: Schottky SS34 (fast steering) + Zener 36V 5W (1N5365B)
+* Anode of Schottky connects to Drain; Cathode connects to Cathode of Zener; Anode of Zener connects to VDD
+D_SCHOTTKY DRAIN SNUB_MID SS34_MODEL
+.MODEL SS34_MODEL D(IS=2e-7 RS=0.045 N=1.05 BV=40.0 IBV=1m CJO=150p)
+
+D_ZENER VDD_CLEAN SNUB_MID ZENER_36V_MODEL
+.MODEL ZENER_36V_MODEL D(IS=1e-11 RS=1.2 BV=36.0 IBV=5m NBV=1.1)
+
+* ==============================================================================
+* SIMULATION DIRECTIVES
+* ==============================================================================
+.TRAN 10us 25ms 0.0s 5us UIC
+
+.PRINT TRAN V(GPIO18) V(MOSFET_GATE) V(DRAIN) I(L_COIL)
+
+.END

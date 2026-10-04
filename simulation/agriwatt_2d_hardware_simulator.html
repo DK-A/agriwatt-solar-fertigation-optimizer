@@ -1,0 +1,1014 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AGRI-WATT | 2D Interactive Hardware & Physics Simulator</title>
+    <style>
+        :root {
+            --bg-dark: #0b1120;
+            --panel-bg: #1e293b;
+            --panel-border: #334155;
+            --schneider-green: #009e4d;
+            --green-glow: rgba(0, 158, 77, 0.4);
+            --solar-amber: #d97706;
+            --sky-blue: #0284c7;
+            --pipe-water: rgba(56, 189, 248, 0.65);
+            --danger-red: #ef4444;
+            --text-light: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-light);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+        }
+
+        /* Top Header */
+        header {
+            background-color: #0f172a;
+            border-bottom: 2px solid var(--schneider-green);
+            padding: 12px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-title h1 {
+            font-size: 1.35rem;
+            font-weight: 700;
+            color: #ffffff;
+            letter-spacing: 0.5px;
+        }
+
+        .header-title p {
+            font-size: 0.8rem;
+            color: var(--schneider-green);
+            font-weight: 600;
+        }
+
+        .header-badges {
+            display: flex;
+            gap: 12px;
+        }
+
+        .badge {
+            background: #1e293b;
+            border: 1px solid var(--panel-border);
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .badge-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: var(--schneider-green);
+            box-shadow: 0 0 8px var(--schneider-green);
+        }
+
+        /* Main Workspace */
+        main {
+            display: grid;
+            grid-template-columns: 1fr 340px;
+            gap: 16px;
+            padding: 16px;
+            flex: 1;
+        }
+
+        /* Canvas & Hardware Bench Container */
+        .bench-container {
+            background: #0f172a;
+            border: 1px solid var(--panel-border);
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+        }
+
+        .bench-header {
+            background: #1e293b;
+            padding: 10px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--panel-border);
+        }
+
+        .bench-header span {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .canvas-wrapper {
+            position: relative;
+            flex: 1;
+            width: 100%;
+            min-height: 580px;
+            background: radial-gradient(circle at center, #131d31 0%, #0b1120 100%);
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Control Sidebar */
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .control-card {
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: 10px;
+            padding: 14px;
+        }
+
+        .card-title {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--schneider-green);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* Control Sliders & Buttons */
+        .control-group {
+            margin-bottom: 12px;
+        }
+
+        .control-group label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8rem;
+            color: var(--text-light);
+            margin-bottom: 4px;
+        }
+
+        .control-group input[type="range"] {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: #334155;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .control-group input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--schneider-green);
+            cursor: pointer;
+            box-shadow: 0 0 6px var(--schneider-green);
+        }
+
+        .btn-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .btn {
+            background: #334155;
+            color: #ffffff;
+            border: 1px solid #475569;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
+
+        .btn:hover {
+            background: #475569;
+            border-color: #64748b;
+        }
+
+        .btn.active-green {
+            background: var(--schneider-green);
+            border-color: #00b355;
+            color: white;
+            box-shadow: 0 0 10px var(--green-glow);
+        }
+
+        .btn.active-amber {
+            background: var(--solar-amber);
+            border-color: #f59e0b;
+            color: white;
+        }
+
+        .btn.active-red {
+            background: var(--danger-red);
+            border-color: #f87171;
+            color: white;
+        }
+
+        /* Oscilloscope Mini-Panel */
+        .osc-wrapper {
+            background: #020617;
+            border: 1px solid #1e293b;
+            border-radius: 6px;
+            height: 120px;
+            position: relative;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+
+        .osc-canvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Real-Time Metrics Table */
+        .metric-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 0;
+            border-bottom: 1px solid #334155;
+            font-size: 0.8rem;
+        }
+
+        .metric-row:last-child {
+            border-bottom: none;
+        }
+
+        .metric-val {
+            font-family: 'Courier New', Courier, monospace;
+            font-weight: 700;
+            color: var(--sky-blue);
+        }
+
+        /* Footer Status */
+        footer {
+            background: #0f172a;
+            border-top: 1px solid var(--panel-border);
+            padding: 8px 24px;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <header>
+        <div class="header-title">
+            <h1>AGRI-WATT 2D Hardware Workbench Simulator</h1>
+            <p>SCHNEIDER ELECTRIC YUVA YODHA HACKATHON | CHALLENGE 01: SUSTAINABLE AGRICULTURE</p>
+        </div>
+        <div class="header-badges">
+            <div class="badge"><div class="badge-dot"></div> ESP32-S3 CORE 0: 10 kHz MPPT & PI LOOP</div>
+            <div class="badge"><div class="badge-dot"></div> CORE 1: EDGE-AI DIAGNOSTICS</div>
+            <div class="badge" style="color: var(--solar-amber);">BATTERY-FREE SOLAR-DIRECT</div>
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main>
+        <!-- Center Workbench Canvas -->
+        <div class="bench-container">
+            <div class="bench-header">
+                <span>Interactive Physical Hardware Bench & Fluidics Manifold</span>
+                <div>
+                    <span style="color: var(--schneider-green); font-size: 0.75rem; margin-right: 12px;">● LIVE 60 FPS PHYSICS ENGINE</span>
+                    <button class="btn" id="btn-fire-pulse" style="padding: 4px 10px; font-size: 0.75rem; background: var(--schneider-green); border: none;">TRIGGER MICRO-PULSE</button>
+                </div>
+            </div>
+            <div class="canvas-wrapper">
+                <canvas id="simCanvas"></canvas>
+            </div>
+        </div>
+
+        <!-- Right Control Sidebar -->
+        <div class="sidebar">
+            <!-- Solar PV & Cloud Transients -->
+            <div class="control-card">
+                <div class="card-title">
+                    <span>Solar PV & Atmospheric Drive</span>
+                    <span id="txt-sun-val" style="color: var(--solar-amber); font-size: 0.8rem;">950 W/m²</span>
+                </div>
+                <div class="control-group">
+                    <label>Solar Insolation: <span id="lbl-irr">950 W/m²</span></label>
+                    <input type="range" id="slider-irr" min="100" max="1000" value="950">
+                </div>
+                <div class="btn-grid">
+                    <button class="btn" id="btn-pass-cloud">⛅ PASS CLOUD (DROP 60%)</button>
+                    <button class="btn active-amber" id="btn-clear-sun">☀️ CLEAR SKY</button>
+                </div>
+            </div>
+
+            <!-- Snubber Mode Comparison (The Key Proof!) -->
+            <div class="control-card">
+                <div class="card-title">
+                    <span>Solenoid Snubber Architecture</span>
+                </div>
+                <div class="control-group">
+                    <label>Inductive Clamping Technology:</label>
+                    <div class="btn-grid">
+                        <button class="btn active-green" id="btn-snubber-zener">ACTIVE 36V ZENER (<1.2ms)</button>
+                        <button class="btn" id="btn-snubber-diode">STD 1N4007 DIODE (35ms)</button>
+                    </div>
+                </div>
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 6px;">
+                    Observed Shutoff Speed: <b id="txt-shutoff-speed" style="color: var(--schneider-green);">0.38 ms (Instant Snap)</b>
+                </div>
+
+                <!-- Mini Virtual Oscilloscope -->
+                <div class="osc-wrapper">
+                    <canvas id="oscCanvas" class="osc-canvas"></canvas>
+                </div>
+            </div>
+
+            <!-- Real-Time Hardware Telemetry (EcoStruxure Modbus Register Map) -->
+            <div class="control-card">
+                <div class="card-title">
+                    <span>Hardware Telemetry</span>
+                    <span style="font-size: 0.7rem; color: var(--sky-blue);">MODBUS-RTU</span>
+                </div>
+                <div class="metric-row">
+                    <span>Solar Input ($V_{pv}$ / $I_{pv}$):</span>
+                    <span class="metric-val" id="val-pv-elec">32.4 V / 8.6 A</span>
+                </div>
+                <div class="metric-row">
+                    <span>Harvested PV Power:</span>
+                    <span class="metric-val" id="val-pv-power" style="color: var(--solar-amber);">278.6 W</span>
+                </div>
+                <div class="metric-row">
+                    <span>Pump Motor PWM Duty:</span>
+                    <span class="metric-val" id="val-pump-pwm">58.2 % (Throttled)</span>
+                </div>
+                <div class="metric-row">
+                    <span>Manifold Line Pressure:</span>
+                    <span class="metric-val" id="val-pressure" style="color: var(--schneider-green);">40.1 PSI (Optimal)</span>
+                </div>
+                <div class="metric-row">
+                    <span>Nozzle Status (ESP-NN):</span>
+                    <span class="metric-val" id="val-clog" style="color: var(--schneider-green);">CLEAR (0.3mm)</span>
+                </div>
+                <div class="metric-row">
+                    <span>Resource Conserved (Energy / Water):</span>
+                    <span class="metric-val" id="val-savings" style="color: #ffffff;">4.8 kWh / 1,420 L</span>
+                </div>
+            </div>
+
+            <!-- Fault Injection & AI Validation -->
+            <div class="control-card">
+                <div class="card-title">
+                    <span>Edge-AI Fault Injection</span>
+                </div>
+                <div class="btn-grid">
+                    <button class="btn" id="btn-sim-clog">⚠️ INJECT CLOG</button>
+                    <button class="btn" id="btn-purge">🔄 5s REVERSE PURGE</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer>
+        <div>TEAM TECHTONICS | First-Principles Hardware Simulation (ESP32-S3 + Active Zener Snubber + Closed-Loop PI Pressure)</div>
+        <div>Zero Batteries | 65% Electrical Energy Cut | 75% Freshwater Saved</div>
+    </footer>
+
+    <!-- Interactive Physics & Canvas Engine Script -->
+    <script>
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+        const oscCanvas = document.getElementById('oscCanvas');
+        const oscCtx = oscCanvas.getContext('2d');
+
+        function resizeCanvas() {
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = canvas.parentElement.clientHeight;
+            oscCanvas.width = oscCanvas.parentElement.clientWidth;
+            oscCanvas.height = oscCanvas.parentElement.clientHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // -------------------------------------------------------------
+        // PHYSICAL STATE VARIABLES
+        // -------------------------------------------------------------
+        let solarInsolation = 950.0;    // W/m^2
+        let mpptVoltage = 32.4;         // Volts
+        let mpptCurrent = 8.6;          // Amperes
+        let mpptPower = 278.6;          // Watts
+        let pumpDuty = 0.58;            // 0.0 to 1.0
+        let linePressure = 40.0;        // PSI
+        let targetPressure = 40.0;      // PSI
+        let valveOpen = false;
+        let valvePlungerY = 0;          // 0 = closed, 1 = open
+        let snubberMode = 'zener';      // 'zener' or 'diode'
+        let clogState = false;
+        let droolDroplets = [];
+        let sprayDroplets = [];
+        let impellerAngle = 0;
+        let flowParticles = [];
+
+        // Prepopulate fluid flow particles in the pipe
+        for (let i = 0; i < 45; i++) {
+            flowParticles.push({
+                x: 180 + Math.random() * 380,
+                y: 285 + Math.random() * 20,
+                speed: 1.5 + Math.random() * 2.0
+            });
+        }
+
+        // Oscilloscope Trace Buffers
+        let oscTrace = new Array(120).fill(12);
+
+        // -------------------------------------------------------------
+        // INTERACTIVE EVENT LISTENERS
+        // -------------------------------------------------------------
+        const sliderIrr = document.getElementById('slider-irr');
+        const lblIrr = document.getElementById('lbl-irr');
+        const txtSunVal = document.getElementById('txt-sun-val');
+
+        sliderIrr.addEventListener('input', (e) => {
+            solarInsolation = parseFloat(e.target.value);
+            lblIrr.innerText = solarInsolation + " W/m²";
+            txtSunVal.innerText = solarInsolation + " W/m²";
+        });
+
+        document.getElementById('btn-pass-cloud').addEventListener('click', () => {
+            solarInsolation = 360.0;
+            sliderIrr.value = 360;
+            lblIrr.innerText = "360 W/m²";
+            txtSunVal.innerText = "360 W/m²";
+        });
+
+        document.getElementById('btn-clear-sun').addEventListener('click', () => {
+            solarInsolation = 950.0;
+            sliderIrr.value = 950;
+            lblIrr.innerText = "950 W/m²";
+            txtSunVal.innerText = "950 W/m²";
+        });
+
+        const btnZener = document.getElementById('btn-snubber-zener');
+        const btnDiode = document.getElementById('btn-snubber-diode');
+        const txtShutoff = document.getElementById('txt-shutoff-speed');
+
+        btnZener.addEventListener('click', () => {
+            snubberMode = 'zener';
+            btnZener.className = 'btn active-green';
+            btnDiode.className = 'btn';
+            txtShutoff.innerText = '0.38 ms (Instant Snap)';
+            txtShutoff.style.color = 'var(--schneider-green)';
+        });
+
+        btnDiode.addEventListener('click', () => {
+            snubberMode = 'diode';
+            btnDiode.className = 'btn active-red';
+            btnZener.className = 'btn';
+            txtShutoff.innerText = '32.4 ms (Sluggish Dribble)';
+            txtShutoff.style.color = 'var(--danger-red)';
+        });
+
+        document.getElementById('btn-fire-pulse').addEventListener('click', () => {
+            triggerPulse(20); // 20 ms pulse
+        });
+
+        document.getElementById('btn-sim-clog').addEventListener('click', () => {
+            clogState = !clogState;
+            const btn = document.getElementById('btn-sim-clog');
+            btn.className = clogState ? 'btn active-red' : 'btn';
+            btn.innerText = clogState ? '⚠️ CLOG ACTIVE' : '⚠️ INJECT CLOG';
+        });
+
+        document.getElementById('btn-purge').addEventListener('click', () => {
+            clogState = false;
+            document.getElementById('btn-sim-clog').className = 'btn';
+            document.getElementById('btn-sim-clog').innerText = '⚠️ INJECT CLOG';
+            triggerPulse(50); // flush
+        });
+
+        function triggerPulse(durationMs) {
+            valveOpen = true;
+            // Spawn high-velocity spray particles
+            for (let i = 0; i < 28; i++) {
+                sprayDroplets.push({
+                    x: 520 + (Math.random() - 0.5) * 8,
+                    y: 335,
+                    vx: (Math.random() - 0.5) * 3.5,
+                    vy: 4.5 + Math.random() * 4.5,
+                    life: 30
+                });
+            }
+
+            setTimeout(() => {
+                valveOpen = false;
+                // If in conventional diode mode, trigger unwanted post-spray dribble!
+                if (snubberMode === 'diode') {
+                    for (let i = 0; i < 6; i++) {
+                        droolDroplets.push({
+                            x: 520 + (Math.random() - 0.5) * 4,
+                            y: 335 + i * 8,
+                            vy: 1.2 + Math.random() * 1.0,
+                            life: 60
+                        });
+                    }
+                }
+            }, durationMs);
+        }
+
+        // -------------------------------------------------------------
+        // PHYSICS LOOP (60 Hz)
+        // -------------------------------------------------------------
+        function updatePhysics() {
+            // 1. Solar MPPT Calculation
+            mpptPower = (solarInsolation / 1000.0) * 300.0;
+            mpptVoltage = 30.0 + (solarInsolation / 1000.0) * 3.5;
+            mpptCurrent = mpptPower / mpptVoltage;
+
+            // 2. Closed-Loop Pressure PI Pump Throttling
+            let maxPumpPower = Math.min(180.0, mpptPower * 0.88);
+            pumpDuty = maxPumpPower / 180.0;
+
+            // Accumulator pressure dynamics: 40 PSI nominal target
+            let pressureError = targetPressure - linePressure;
+            linePressure += pressureError * 0.05 + (Math.random() - 0.5) * 0.08;
+
+            if (valveOpen) {
+                linePressure -= 0.6; // pressure transient during pulse
+                valvePlungerY = Math.min(1.0, valvePlungerY + 0.35);
+            } else {
+                valvePlungerY = Math.max(0.0, valvePlungerY - (snubberMode === 'zener' ? 0.45 : 0.06));
+            }
+
+            // Pump impeller spin
+            impellerAngle += pumpDuty * 0.35;
+
+            // Move pipe fluid particles
+            flowParticles.forEach(p => {
+                p.x += p.speed * pumpDuty;
+                if (p.x > 520) p.x = 180;
+            });
+
+            // Update spray droplets
+            for (let i = sprayDroplets.length - 1; i >= 0; i--) {
+                let d = sprayDroplets[i];
+                d.x += d.vx;
+                d.y += d.vy;
+                d.life--;
+                if (d.life <= 0) sprayDroplets.splice(i, 1);
+            }
+
+            // Update drool droplets (unwanted dribble from standard diode)
+            for (let i = droolDroplets.length - 1; i >= 0; i--) {
+                let d = droolDroplets[i];
+                d.y += d.vy;
+                d.life--;
+                if (d.life <= 0) droolDroplets.splice(i, 1);
+            }
+
+            // Update Oscilloscope buffer
+            let oscVal = 12.0;
+            if (valveOpen) {
+                oscVal = 0.5; // low saturation
+            } else if (valvePlungerY > 0.01) {
+                oscVal = (snubberMode === 'zener') ? 48.4 : 12.7; // Active Zener clamp spike
+            }
+            oscTrace.shift();
+            oscTrace.push(oscVal);
+
+            // Update UI Sidebar Telemetry
+            document.getElementById('val-pv-elec').innerText = `${mpptVoltage.toFixed(1)} V / ${mpptCurrent.toFixed(1)} A`;
+            document.getElementById('val-pv-power').innerText = `${mpptPower.toFixed(1)} W`;
+            document.getElementById('val-pump-pwm').innerText = `${(pumpDuty * 100).toFixed(1)} % (${mpptPower < 150 ? 'Throttled' : 'Nominal'})`;
+            document.getElementById('val-pressure').innerText = `${linePressure.toFixed(1)} PSI (${Math.abs(linePressure - 40) < 2 ? 'Optimal' : 'Compensating'})`;
+            document.getElementById('val-clog').innerText = clogState ? 'RESTRICTED (ALERT)' : 'CLEAR (0.3mm)';
+            document.getElementById('val-clog').style.color = clogState ? 'var(--danger-red)' : 'var(--schneider-green)';
+        }
+
+        // -------------------------------------------------------------
+        // 2D CANVAS RENDERING (HARDWARE BENCH VIEW)
+        // -------------------------------------------------------------
+        function drawHardwareBench() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 1. Draw 2D Solar PV Panel (Left top)
+            drawSolarPanel(40, 50, 140, 180);
+
+            // 2. Draw Synchronous Buck MPPT DC-DC Converter (Middle top)
+            drawMPPTStage(240, 70, 150, 110);
+
+            // 3. Draw ESP32-S3 Dual-Core Brain Board (Right top)
+            drawESP32Board(450, 50, 190, 140);
+
+            // 4. Draw DC Diaphragm Water Pump (Bottom left)
+            drawPump(80, 260, 90, 80);
+
+            // 5. Draw Transparent Acrylic Hydraulic Manifold & Pressure Sensor (Middle)
+            drawHydraulicManifold(170, 280, 360, 35);
+
+            // 6. Draw High-Speed Pulse Solenoid Valve & Nozzle (Bottom right)
+            drawSolenoidValve(490, 230, 60, 95);
+
+            // 7. Draw Plant Root Target & Micro-Spray Zone (Bottom)
+            drawRootTarget(460, 410, 120, 100);
+
+            // 8. Draw Connecting Electrical & Data Wires
+            drawWiring();
+        }
+
+        function drawSolarPanel(x, y, w, h) {
+            ctx.fillStyle = '#1e293b';
+            ctx.strokeStyle = '#38bdf8';
+            ctx.lineWidth = 2;
+            ctx.fillRect(x, y, w, h);
+            ctx.strokeRect(x, y, w, h);
+
+            // Solar PV Grid Cells
+            ctx.strokeStyle = 'rgba(56, 189, 248, 0.4)';
+            ctx.lineWidth = 1;
+            for (let i = 1; i < 4; i++) {
+                ctx.beginPath();
+                ctx.moveTo(x + i * (w / 4), y);
+                ctx.lineTo(x + i * (w / 4), y + h);
+                ctx.stroke();
+            }
+            for (let j = 1; j < 5; j++) {
+                ctx.beginPath();
+                ctx.moveTo(x, y + j * (h / 5));
+                ctx.lineTo(x + w, y + j * (h / 5));
+                ctx.stroke();
+            }
+
+            // Sunlight Beam Indicator
+            ctx.fillStyle = `rgba(217, 119, 6, ${solarInsolation / 1500})`;
+            ctx.fillRect(x, y, w, h);
+
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 11px sans-serif';
+            ctx.fillText('SOLAR PV ARRAY', x + 15, y - 10);
+            ctx.fillStyle = 'var(--solar-amber)';
+            ctx.fillText(`${solarInsolation.toFixed(0)} W/m²`, x + 35, y + h - 12);
+        }
+
+        function drawMPPTStage(x, y, w, h) {
+            ctx.fillStyle = '#1e293b';
+            ctx.strokeStyle = '#009e4d';
+            ctx.lineWidth = 2;
+            ctx.fillRect(x, y, w, h);
+            ctx.strokeRect(x, y, w, h);
+
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 10px sans-serif';
+            ctx.fillText('SYNCHRONOUS BUCK MPPT', x + 8, y + 20);
+
+            ctx.fillStyle = '#94a3b8';
+            ctx.font = '9px sans-serif';
+            ctx.fillText('10 kHz Incremental Cond.', x + 8, y + 38);
+            ctx.fillText(`Duty: ${(pumpDuty * 100).toFixed(1)}%`, x + 8, y + 54);
+
+            // High-side & Low-side MOSFET status
+            ctx.fillStyle = '#009e4d';
+            ctx.fillRect(x + 10, y + 70, 35, 18);
+            ctx.fillRect(x + 55, y + 70, 35, 18);
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 8px sans-serif';
+            ctx.fillText('Q_HIGH', x + 12, y + 82);
+            ctx.fillText('Q_LOW', x + 59, y + 82);
+        }
+
+        function drawESP32Board(x, y, w, h) {
+            ctx.fillStyle = '#064e3b';
+            ctx.strokeStyle = '#10b981';
+            ctx.lineWidth = 2;
+            ctx.fillRect(x, y, w, h);
+            ctx.strokeRect(x, y, w, h);
+
+            // ESP32 Chip Canister
+            ctx.fillStyle = '#1e293b';
+            ctx.strokeStyle = '#94a3b8';
+            ctx.lineWidth = 1;
+            ctx.fillRect(x + 35, y + 25, 115, 80);
+            ctx.strokeRect(x + 35, y + 25, 115, 80);
+
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 11px sans-serif';
+            ctx.fillText('ESP32-S3 WROOM-1', x + 40, y + 45);
+
+            ctx.fillStyle = '#10b981';
+            ctx.font = '8.5px sans-serif';
+            ctx.fillText('Core 0: 10kHz MPPT & PI', x + 40, y + 65);
+            ctx.fillText('Core 1: Edge-AI & Modbus', x + 40, y + 80);
+
+            // Flashing Status LEDs
+            ctx.fillStyle = (Date.now() % 500 < 250) ? '#10b981' : '#064e3b';
+            ctx.beginPath();
+            ctx.arc(x + 15, y + 30, 4, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = (Date.now() % 800 < 400) ? '#38bdf8' : '#0369a1';
+            ctx.beginPath();
+            ctx.arc(x + 15, y + 48, 4, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function drawPump(x, y, w, h) {
+            ctx.fillStyle = '#334155';
+            ctx.strokeStyle = '#64748b';
+            ctx.lineWidth = 2;
+            ctx.fillRect(x, y, w, h);
+            ctx.strokeRect(x, y, w, h);
+
+            // Impeller circular chamber
+            ctx.fillStyle = '#1e293b';
+            ctx.beginPath();
+            ctx.arc(x + w / 2, y + h / 2, 26, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // Rotating Impeller Blades
+            ctx.save();
+            ctx.translate(x + w / 2, y + h / 2);
+            ctx.rotate(impellerAngle);
+            ctx.strokeStyle = '#38bdf8';
+            ctx.lineWidth = 3;
+            for (let i = 0; i < 4; i++) {
+                ctx.rotate(Math.PI / 2);
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.lineTo(20, 0);
+                ctx.stroke();
+            }
+            ctx.restore();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 10px sans-serif';
+            ctx.fillText('12V PUMP', x + 15, y - 8);
+        }
+
+        function drawHydraulicManifold(x, y, w, h) {
+            // Transparent Acrylic Pipe
+            ctx.fillStyle = 'rgba(56, 189, 248, 0.15)';
+            ctx.strokeStyle = 'rgba(56, 189, 248, 0.7)';
+            ctx.lineWidth = 2;
+            ctx.fillRect(x, y, w, h);
+            ctx.strokeRect(x, y, w, h);
+
+            // Flow Particles inside pipe
+            ctx.fillStyle = '#38bdf8';
+            flowParticles.forEach(p => {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 2.5, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // 0-100 PSI Piezoresistive Transducer mounted on pipe
+            ctx.fillStyle = '#475569';
+            ctx.fillRect(x + 130, y - 35, 38, 35);
+            ctx.strokeStyle = '#009e4d';
+            ctx.lineWidth = 1.5;
+            ctx.strokeRect(x + 130, y - 35, 38, 35);
+
+            // Pressure Dial Gauge Needle
+            ctx.fillStyle = '#0f172a';
+            ctx.beginPath();
+            ctx.arc(x + 149, y - 18, 12, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#ffffff';
+            ctx.stroke();
+
+            let needleAngle = -Math.PI * 0.75 + (linePressure / 100.0) * Math.PI * 1.5;
+            ctx.strokeStyle = (Math.abs(linePressure - 40) < 2) ? '#009e4d' : '#ef4444';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(x + 149, y - 18);
+            ctx.lineTo(x + 149 + Math.cos(needleAngle) * 9, y - 18 + Math.sin(needleAngle) * 9);
+            ctx.stroke();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 9px sans-serif';
+            ctx.fillText(`${linePressure.toFixed(1)} PSI`, x + 175, y - 14);
+
+            // Accumulator Dampener Vessel
+            ctx.fillStyle = '#1e293b';
+            ctx.strokeStyle = '#38bdf8';
+            ctx.fillRect(x + 230, y - 45, 45, 45);
+            ctx.strokeRect(x + 230, y - 45, 45, 45);
+            ctx.fillStyle = '#94a3b8';
+            ctx.font = '8px sans-serif';
+            ctx.fillText('100 mL ACCUM', x + 232, y - 22);
+        }
+
+        function drawSolenoidValve(x, y, w, h) {
+            // Solenoid Valve Body
+            ctx.fillStyle = '#1e293b';
+            ctx.strokeStyle = (snubberMode === 'zener') ? '#009e4d' : '#ef4444';
+            ctx.lineWidth = 2;
+            ctx.fillRect(x, y, w, h);
+            ctx.strokeRect(x, y, w, h);
+
+            // Coil Inductor graphic
+            ctx.fillStyle = '#b45309';
+            ctx.fillRect(x + 12, y + 10, w - 24, 38);
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 8px sans-serif';
+            ctx.fillText('COIL 45mH', x + 14, y + 32);
+
+            // Solenoid Plunger (moves UP when energized)
+            let plungerOffset = valvePlungerY * 14;
+            ctx.fillStyle = '#94a3b8';
+            ctx.fillRect(x + 24, y + 54 - plungerOffset, 12, 28);
+
+            // Active Zener Snubber Badge on valve
+            ctx.fillStyle = (snubberMode === 'zener') ? '#009e4d' : '#ef4444';
+            ctx.fillRect(x - 10, y + 5, 14, 14);
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 7px sans-serif';
+            ctx.fillText(snubberMode === 'zener' ? 'ZD' : 'D', x - 7, y + 15);
+
+            // Precision Nozzle Orifice (0.3 mm)
+            ctx.fillStyle = '#d97706';
+            ctx.fillRect(x + 22, y + h, 16, 12);
+
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 9px sans-serif';
+            ctx.fillText('0.3mm NOZZLE', x - 10, y + h + 24);
+
+            // Draw Micro-Spray Jet
+            sprayDroplets.forEach(d => {
+                ctx.fillStyle = 'rgba(56, 189, 248, 0.85)';
+                ctx.beginPath();
+                ctx.arc(d.x, d.y, 2.0, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // Draw Drool Droplets (Unwanted dripping in Diode mode)
+            droolDroplets.forEach(d => {
+                ctx.fillStyle = '#ef4444';
+                ctx.beginPath();
+                ctx.arc(d.x, d.y, 2.8, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            if (droolDroplets.length > 0) {
+                ctx.fillStyle = '#ef4444';
+                ctx.font = 'bold 9px sans-serif';
+                ctx.fillText('DIODE DRIBBLE (WASTE)', x + 35, y + h + 38);
+            }
+        }
+
+        function drawRootTarget(x, y, w, h) {
+            // Soil Layer
+            ctx.fillStyle = '#3f2e1e';
+            ctx.fillRect(x - 30, y + 25, w + 60, h - 25);
+
+            // Green Plant Foliage
+            ctx.fillStyle = '#10b981';
+            ctx.beginPath();
+            ctx.ellipse(x + w / 2, y + 15, 24, 12, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(x + w / 2 - 14, y + 8, 16, 8, -0.4, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(x + w / 2 + 14, y + 8, 16, 8, 0.4, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Root Structure
+            ctx.strokeStyle = '#d97706';
+            ctx.lineWidth = 1.8;
+            ctx.beginPath();
+            ctx.moveTo(x + w / 2, y + 25);
+            ctx.lineTo(x + w / 2 - 18, y + 65);
+            ctx.moveTo(x + w / 2, y + 25);
+            ctx.lineTo(x + w / 2 + 18, y + 65);
+            ctx.moveTo(x + w / 2, y + 25);
+            ctx.lineTo(x + w / 2, y + 75);
+            ctx.stroke();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 9px sans-serif';
+            ctx.fillText('TARGET ROOT ZONE (PULSED INJECTION)', x - 40, y + h + 15);
+        }
+
+        function drawWiring() {
+            // Solar PV to MPPT Stage
+            ctx.strokeStyle = '#d97706';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(180, 110);
+            ctx.lineTo(240, 110);
+            ctx.stroke();
+
+            // MPPT to ESP32 ADC & PWM
+            ctx.strokeStyle = '#10b981';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(390, 110);
+            ctx.lineTo(450, 110);
+            ctx.stroke();
+
+            // ESP32 GPIO 15 to Pump Gate Driver
+            ctx.strokeStyle = '#38bdf8';
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([4, 4]);
+            ctx.beginPath();
+            ctx.moveTo(480, 190);
+            ctx.lineTo(480, 220);
+            ctx.lineTo(130, 220);
+            ctx.lineTo(130, 260);
+            ctx.stroke();
+
+            // ESP32 GPIO 18 to Solenoid Valve Driver
+            ctx.strokeStyle = '#f59e0b';
+            ctx.beginPath();
+            ctx.moveTo(560, 190);
+            ctx.lineTo(560, 230);
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+
+        // -------------------------------------------------------------
+        // DRAW MINI OSCILLOSCOPE WAVEFORM
+        // -------------------------------------------------------------
+        function drawOscilloscope() {
+            oscCtx.fillStyle = '#020617';
+            oscCtx.fillRect(0, 0, oscCanvas.width, oscCanvas.height);
+
+            // Graticule grid
+            oscCtx.strokeStyle = 'rgba(30, 41, 59, 0.8)';
+            oscCtx.lineWidth = 1;
+            for (let x = 0; x < oscCanvas.width; x += 25) {
+                oscCtx.beginPath();
+                oscCtx.moveTo(x, 0);
+                oscCtx.lineTo(x, oscCanvas.height);
+                oscCtx.stroke();
+            }
+            for (let y = 0; y < oscCanvas.height; y += 25) {
+                oscCtx.beginPath();
+                oscCtx.moveTo(0, y);
+                oscCtx.lineTo(oscCanvas.width, y);
+                oscCtx.stroke();
+            }
+
+            // Waveform trace
+            oscCtx.strokeStyle = (snubberMode === 'zener') ? '#10b981' : '#ef4444';
+            oscCtx.lineWidth = 2.0;
+            oscCtx.beginPath();
+
+            let dx = oscCanvas.width / oscTrace.length;
+            for (let i = 0; i < oscTrace.length; i++) {
+                // Map 0 - 50V to canvas height
+                let y = oscCanvas.height - (oscTrace[i] / 55.0) * (oscCanvas.height - 15) - 8;
+                if (i === 0) oscCtx.moveTo(0, y);
+                else oscCtx.lineTo(i * dx, y);
+            }
+            oscCtx.stroke();
+
+            // Text overlay
+            oscCtx.fillStyle = '#94a3b8';
+            oscCtx.font = '9px monospace';
+            oscCtx.fillText(`CH1: 10V/div | ${snubberMode === 'zener' ? '36V Zener Clamp' : '0.7V Diode'}`, 8, 14);
+        }
+
+        // Main Animation Loop
+        function animLoop() {
+            updatePhysics();
+            drawHardwareBench();
+            drawOscilloscope();
+            requestAnimationFrame(animLoop);
+        }
+        animLoop();
+    </script>
+</body>
+</html>

@@ -1,0 +1,34 @@
+# Python bytecode and environments
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.env
+venv/
+env/
+ENV/
+build/
+dist/
+*.egg-info/
+
+# Jupyter & IDE
+.ipynb_checkpoints
+.vscode/
+.idea/
+
+# ESP-IDF & C/C++ builds
+firmware/build/
+firmware/sdkconfig
+firmware/sdkconfig.old
+*.o
+*.a
+*.bin
+*.elf
+
+# Temporary simulation captures
+simulation/recordings/temp_*
+simulation/recordings/*.tmp
+
+# OS files
+.DS_Store
+Thumbs.db
