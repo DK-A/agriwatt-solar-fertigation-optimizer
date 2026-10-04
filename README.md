@@ -37,7 +37,41 @@ Conventional agricultural fertigation relies heavily on unmonitored flood or man
 
 ---
 
-## 3. Dual-Core Embedded Firmware Architecture
+## 3. MATLAB & Physical Engineering Simulation Proofs
+
+### 3.1 MATLAB Multi-Domain System Simulation (Figure 1)
+![MATLAB Multi-Domain Simulation Figure](simulation/proof_visuals/agriwatt_matlab_figure.png)
+
+* **(a) Solar PV Dynamic Drive & MPPT Response:** Simulates $1,000\text{ W/m}^2$ full daylight subjected to a severe $62\%$ cloud shadow drop ($380\text{ W/m}^2$). The $10\text{ kHz}$ Incremental Conductance loop tracks the dynamic maximum power knee ($P_{mppt} = 310\text{ W} \rightarrow 118\text{ W}$) and throttles pump motor PWM with **zero motor stalls** and stable DC bus voltage.
+* **(b) Closed-Loop Hydraulic Pressure Regulation:** Discrete PI controller with anti-windup maintains manifold line pressure tightly within the **$38.0 - 42.0\text{ PSI}$** target window. Transient pressure excursions during sudden solar drops are suppressed to $\Delta P < 2.8\text{ PSI}$ within $4.2\text{ s}$.
+* **(c) Solenoid Demagnetization Transient:** Compares the Active 36V Zener snubber against a conventional flyback diode. The 36V clamp collapses inductive current from $200\text{ mA}$ to $0\text{ mA}$ in **$0.29\text{ ms}$** (crossing the $20\text{ mA}$ mechanical plunger release threshold in **$0.22\text{ ms}$**), outperforming the baseline diode's sluggish $4.61\text{ ms}$ decay by **$16.0\times$**.
+* **(d) Seasonal Resource Conservation Benchmark:** Quantifies per-hectare savings over a 90-day cotton/chilli crop cycle, verifying a **$65.0\%$ cut in electrical pumping energy** ($507\text{ kWh/Ha}$ saved) and a **$75.0\%$ reduction in freshwater consumption** ($3,150\text{ kL/Ha}$ saved).
+
+---
+
+### 3.2 SPICE Transient Nodal Oscilloscope Analysis
+![SPICE Transient Analysis Oscilloscope Trace](simulation/circuit/agriwatt_spice_transient_analysis.png)
+
+Continuous-time nodal differential equations solved with integration step $\Delta t = 0.5\ \mu\text{s}$:
+* **Active 36V Zener Clamp:** $V_{clamp} = V_{rail} + V_Z + V_F = 12\text{ V} + 36\text{ V} + 0.4\text{ V} = \mathbf{48.4\text{ V}}$ (12% safety margin below IRLZ44N $V_{DSS} = 55\text{ V}$).
+* **Inductive Discharge Rate:** $\frac{dI}{dt} = -\frac{V_Z + V_F}{L} = -\frac{36.4\text{ V}}{0.045\text{ H}} = \mathbf{-808.8\text{ A/s}}$.
+* Current collapses in **$0.288\text{ ms}$**, eliminating mechanical plunger bounce and chemical post-spray dribble.
+
+---
+
+### 3.3 Edge-AI Diagnostic & Predictive Evaluation
+<p align="center">
+  <img src="models/evaluation/confusion_matrix.png" width="48%" alt="Clog Diagnostic Confusion Matrix" />
+  <img src="models/evaluation/et0_regression_parity.png" width="48%" alt="ET0 Regressor Parity Plot" />
+</p>
+
+* **Pressure Transient Clog Classifier:** Achieves **$100.00\%$ test accuracy** across 600 validation transients, distinguishing between `NORMAL` (0.30 mm), `PARTIAL_CLOG` (0.15–0.22 mm), `FULL_CLOG` (<0.10 mm), and `CAVITATION_LEAK` conditions with an inference latency of **$2.65\text{ ms}$**.
+* **Microclimate ET0 Regressor:** Achieves **$R^2 = 0.9854$** and **$\text{MAE} = 0.151\text{ mm/day}$** against ground-truth FAO-56 Penman-Monteith physics, optimizing daily root-zone dosing at **$3.48\text{ ms}$** per execution.
+* **Firmware Deployment:** Layer weights, biases, and feature normalizers are exported to [`edge_ai_model_weights.h`](models/trained/edge_ai_model_weights.h) as static C-arrays for zero-allocation SIMD execution on **ESP32-S3 Core 1**.
+
+---
+
+## 4. Dual-Core Embedded Firmware Architecture
 
 ```
                  ESP32-S3 DUAL-CORE SOC
@@ -96,7 +130,48 @@ agriwatt-solar-fertigation-optimizer/
 
 ---
 
-## 5. Quickstart Guide
+## 5. Repository Structure
+
+```
+agriwatt-solar-fertigation-optimizer/
+├── datasets/                                 # Domain physical training datasets
+│   ├── generate_datasets.py                  # Generates hydraulic and solar datasets
+│   ├── pressure_transient_clog_dataset.csv   # 3,000 hydraulic relaxation decay samples
+│   └── solar_microclimate_irrigation_dataset.csv # 5,000 solar & microclimate ET0 samples
+├── models/                                   # Trained model weights and evaluations
+│   ├── trained/
+│   │   ├── pressure_clog_classifier.joblib   # Trained anomaly classifier
+│   │   ├── et0_irrigation_regressor.joblib   # Trained ET0 regressor
+│   │   └── edge_ai_model_weights.h           # Quantized C-header weights for ESP32-S3
+│   └── evaluation/
+│       ├── confusion_matrix.png              # 100% accuracy evaluation plot
+│       └── et0_regression_parity.png         # Parity plot (R^2 = 0.9854)
+├── src/                                      # Python machine learning source
+│   ├── dataset_loader.py                     # Data preprocessing & feature scaling
+│   ├── train_models.py                       # Training pipeline & evaluation
+│   ├── esp32_weight_exporter.py              # Exports weights to C arrays
+│   └── inference_engine.py                   # Python runtime inference benchmark
+├── firmware/main/                            # Production ESP32-S3 FreeRTOS Suite
+│   ├── main.c                               # Dual-core orchestrator
+│   ├── power_mppt.c / .h                     # 10 kHz Incremental Conductance MPPT
+│   ├── hydraulic_control.c / .h              # Discrete PI pressure regulator
+│   ├── solenoid_driver.c / .h                # Peak-and-Hold & reverse purge
+│   ├── edge_ai_diagnostics.c / .h            # ESP-NN anomaly classification
+│   ├── edge_ai_model_weights.h               # Embedded neural network weights
+│   └── modbus_telemetry.c / .h               # Schneider EcoStruxure holding registers
+├── hardware/                                 # Circuit schematics & PCB specifications
+│   └── hardware_design_spec.md               # Active Zener snubber, optocouplers & BOM
+└── simulation/                               # Simulation, verification & screen recordings
+    ├── circuit/                              # SPICE netlist & continuous-time solver
+    ├── proof_visuals/                        # Publication & MATLAB simulation figures
+    ├── recordings/                           # Full simulation screen recording videos
+    ├── agriwatt_2d_hardware_simulator.html   # Interactive 2D hardware workbench
+    └── agriwatt_simulation_plots.m           # Native MATLAB script
+```
+
+---
+
+## 6. Quickstart Guide
 
 ### 1. Clone & Set Up Python Environment
 ```bash
@@ -135,6 +210,15 @@ Double-click `simulation/agriwatt_2d_hardware_simulator.html` in any web browser
 
 ---
 
-## 6. License
-Licensed under the [MIT License](LICENSE).
+## 7. Demonstration Videos & Simulation Recordings
+
+Synchronized HD screen recordings with lower-third subtitles are located in `simulation/recordings/`:
+* **Complete Showcase Video (Merged with Subtitles):** [`simulation/recordings/agriwatt_complete_simulation_showcase.mp4`](simulation/recordings/agriwatt_complete_simulation_showcase.mp4) ($61\text{s}$, $1280\times 720$ HD).
+* **Terminal & MATLAB Execution Demo:** [`simulation/recordings/terminal_execution_demo.mp4`](simulation/recordings/terminal_execution_demo.mp4) ($30\text{s}$).
+* **2D Hardware Workbench Demo:** [`simulation/recordings/agriwatt_hardware_simulation_demo.mp4`](simulation/recordings/agriwatt_hardware_simulation_demo.mp4) ($29\text{s}$).
+
+---
+
+## 8. License
+Licensed under the [MIT License](LICENSE).  
 Developed by **Team Techtonics** for the **Schneider Electric Yuva Yodha Tech Hackathon**.
